@@ -1,2 +1,0 @@
-# MyLittlePoltter
-My plotter project
