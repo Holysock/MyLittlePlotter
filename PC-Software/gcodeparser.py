@@ -38,7 +38,7 @@ print "  ▓▒▒▒▒▒░░░░▓▓▓▒▒▒▒▒▒▒▒▒▒�
 print "  ▓▓▒▒▒▒▒░░░░░▓    ▒▒▒▒▒▒▒▒▒▒▒▀"
 print ""
 
-filterForZ = True;
+filterForZ = False;
 debugging = False
 try:
 	port = sys.argv[1]
@@ -50,9 +50,12 @@ try:
 	if sys.argv[5] == "True":
 		debugging = True
 	
-	deltime = int(sys.argv[6])/1000.0
+	deltime = int(sys.argv[7])/1000.0
+
+	if sys.argv[5] == "True":
+		filterForZ = True
 except:
-	print "Usage: [\"port\"] [baudrate] [\"path-to-gcode\"] [Dropping chars] [Debugging] [deltime]"
+	print "Usage: [\"port\"] [baudrate] [\"path-to-gcode\"] [Dropping chars] [Debugging] [deltime] [Use-Z-Axis]"
 	exit()  
 
 print "Trying to connect to the device at " + port
