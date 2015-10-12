@@ -11,43 +11,34 @@
 */
 int stepX = 2; //pinout
 int stepY = 3;
-int stepZ = 10;
+int stepZ = 8;
 int dirX = 4;
 int dirY = 5;
 int dirZ = 12;
 int enable =6;
-int Xmode0 = A0;
-int Xmode1 = A1;
-int Xmode2 = A2;
-int Ymode0 = 7;
-int Ymode1 = 8;
-int Ymode2 = 9;
 boolean hS_X = 1; //1 if there is a limit switch for respective axis
 boolean hS_Y = 1;
 boolean hS_Z = 0;
 boolean endS_X = 0;
 boolean endS_Y = 0;
 boolean endS_Z = 0;
-int homeX = 12; 
+int homeX = 10; 
 int homeY = 11; 
 int homeZ;
 int endX; 
 int endY; 
 int endZ;
 boolean stepArry[6] = {0,0,0,0,0,0}; //X-step,X-dir,Y-step,Y-dir,Z-step,Z-dir
-int t = 250; //time between steps. Change with T[int]
+int t = 10; //time between steps. Change with T[int]
 float RposX; //Your current Xposition in steps
 float RposY; //             Yposition
 float RposZ; //             Zposition
-float mmX = 6400; // step/mm ratio
-float mmY = 6400;
-float mmZ = 3200;
+float mmX = 1600; // step/mm ratio
+float mmY = 1600;
+float mmZ = 1600;
 long endPosX = 528000; // Area in steps X
 long endPosY = 960000; //               Y
-int XmodeInverse; // =16;
-int YmodeInverse; // =16;
-int ZmodeInverse; // =16;
-long CM_PER_SEGMENT = 1000; //do not change!
+long CM_PER_SEGMENT = 1000; //Factor for arc interpolation
 String a;
 
 void setup() {
@@ -60,19 +51,13 @@ void setup() {
   pinMode(dirX,OUTPUT);
   pinMode(dirY,OUTPUT);
   pinMode(dirZ,OUTPUT);
-  pinMode(Xmode0,OUTPUT);
-  pinMode(Xmode1,OUTPUT);
-  pinMode(Xmode2,OUTPUT);
-  pinMode(Ymode0,OUTPUT);
-  pinMode(Ymode1,OUTPUT);
-  pinMode(Ymode2,OUTPUT);
   pinMode(enable,OUTPUT);
-  if(hS_X) pinMode(homeX,INPUT);
-  if(hS_Y) pinMode(homeY,INPUT);
-  if(hS_Z) pinMode(homeZ,INPUT);
-  if(endS_X) pinMode(endX,INPUT);
-  if(endS_Y) pinMode(endY,INPUT);
-  if(endS_Z) pinMode(endZ,INPUT);
+  if(hS_X) pinMode(homeX,INPUT_PULLUP);
+  if(hS_Y) pinMode(homeY,INPUT_PULLUP);
+  if(hS_Z) pinMode(homeZ,INPUT_PULLUP);
+  if(endS_X) pinMode(endX,INPUT_PULLUP);
+  if(endS_Y) pinMode(endY,INPUT_PULLUP);
+  if(endS_Z) pinMode(endZ,INPUT_PULLUP);
   power(0);
   Serial.println(F("Motors are on."));
 }
@@ -85,24 +70,24 @@ void power(boolean on){
   digitalWrite(enable,on);
 }
 void step (){
-  if(hS_X&&digitalRead(homeX)&&stepArry[3]) stepArry[0]=0;
-  if(hS_Y&&digitalRead(homeY)&&stepArry[4]) stepArry[1]=0;
-  if(hS_Z&&digitalRead(homeZ)&&stepArry[5]) stepArry[2]=0;
-  if(endS_X&&digitalRead(endX)&&!stepArry[3]) stepArry[0]=0;
-  if(endS_Y&&digitalRead(endY)&&!stepArry[4]) stepArry[1]=0;
-  if(endS_Z&&digitalRead(endZ)&&!stepArry[5]) stepArry[2]=0;
+  if(hS_X&&limit(1,0)&&stepArry[3]) stepArry[0]=0;
+  if(hS_Y&&limit(2,0)&&stepArry[4]) stepArry[1]=0;
+  if(hS_Z&&limit(3,0)&&stepArry[5]) stepArry[2]=0;
+  if(endS_X&&limit(1,1)&&!stepArry[3]) stepArry[0]=0;
+  if(endS_Y&&limit(2,1)&&!stepArry[4]) stepArry[1]=0;
+  if(endS_Z&&limit(3,1)&&!stepArry[5]) stepArry[2]=0;
   digitalWrite(stepX,stepArry[0]);
   digitalWrite(stepY,stepArry[1]);
   digitalWrite(stepZ,stepArry[2]);
   digitalWrite(dirX,stepArry[3]);
   digitalWrite(dirY,stepArry[4]);
   digitalWrite(dirZ,stepArry[5]);
-  if(stepArry[0]&&stepArry[3]) RposX=RposX-1*XmodeInverse;
-  if(stepArry[0]&&!stepArry[3]) RposX=RposX+1*XmodeInverse;
-  if(stepArry[1]&&stepArry[4]) RposY=RposY-1*YmodeInverse;
-  if(stepArry[1]&&!stepArry[4]) RposY=RposY+1*YmodeInverse;
-  if(stepArry[2]&&stepArry[5]) RposZ=RposZ-1*ZmodeInverse;
-  if(stepArry[2]&&!stepArry[5]) RposZ=RposZ+1*ZmodeInverse;
+  if(stepArry[0]&&stepArry[3]) RposX=RposX-1;
+  if(stepArry[0]&&!stepArry[3]) RposX=RposX+1;
+  if(stepArry[1]&&stepArry[4]) RposY=RposY-1;
+  if(stepArry[1]&&!stepArry[4]) RposY=RposY+1;
+  if(stepArry[2]&&stepArry[5]) RposZ=RposZ-1;
+  if(stepArry[2]&&!stepArry[5]) RposZ=RposZ+1;
   delayMicroseconds(t);
   digitalWrite(stepX,LOW);
   digitalWrite(stepY,LOW);
@@ -114,26 +99,26 @@ void getSerial(){
   if(Serial.peek()==71){
       int g = Serial.parseInt();
       if(g==1||g==0){
-      float eX = Serial.parseFloat()*mmX;
-      float eY = Serial.parseFloat()*mmY;
-      float eZ = Serial.parseFloat()*mmZ;
-      line(eX,eY);
+        float eX = Serial.parseFloat()*mmX;
+        float eY = Serial.parseFloat()*mmY;
+        float eZ = Serial.parseFloat()*mmZ;
+        line(eX,eY);
       }
       else if(g==2||g==3){
-      float eX = Serial.parseFloat()*mmX;
-      float eY = Serial.parseFloat()*mmY;
-      float i = Serial.parseFloat()*mmX;
-      float j = Serial.parseFloat()*mmY;
-      boolean dir;
-      if(g==3) dir = 0;
-      else dir = 1;
-      arc(RposX+i,RposY+j,eX,eY,dir);
+        float eX = Serial.parseFloat()*mmX;
+        float eY = Serial.parseFloat()*mmY;
+        float i = Serial.parseFloat()*mmX;
+        float j = Serial.parseFloat()*mmY;
+        boolean dir;
+        if(g==3) dir = 0;
+        else dir = 1;
+        arc(RposX+i,RposY+j,eX,eY,dir);
       }
-      else if(g=4){
+      else if(g==4){
         delay(Serial.parseInt());
       }
       else if(g==28){
-        homeZero();
+        home();
       }
     Serial.println(F("Done."));
     Serial.readString();
@@ -157,12 +142,12 @@ void getSerial(){
   }
   else if(a=="a"){
     stepArry[1]=1;
-    stepArry[4]=0; 
+    stepArry[4]=1; 
     Serial.println(F("Moving -Y")); 
   }
   else if(a=="d"){
     stepArry[1]=1;
-    stepArry[4]=1;
+    stepArry[4]=0;
     Serial.println(F("Moving +Y"));  
   }
   else if(a=="r"){
@@ -175,7 +160,7 @@ void getSerial(){
     stepArry[5]=1;
     Serial.println(F("Moving -Z"));  
   }
-  else if(a=="x"){
+  else if(a=="q" || a=="x"){
     stepArry[0]=0;
     stepArry[1]=0;
     Serial.println(F("Stopped. Type 'w' 's' 'a' 'd' to move")); 
@@ -208,87 +193,74 @@ void getSerial(){
   a="none";
 } 
 //################################################################################################
-void homeZero(){
-    boolean done=0;
-    boolean aX,aY,aZ,bX,bY,bZ,cX,cY,cZ;
-    long i = 0;
-    long j = 0;
-    long k = 0;
-    while(!done){
-      if(hS_X){
-        if(!digitalRead(homeX)&&!aX&&!bX){
-          stepArry[0]=1;
-          stepArry[3]=1;
-        }
-        if(digitalRead(homeX)&&!aX&&!bX){
-          stepArry[0]=1;
-          stepArry[3]=0;
-          aX=1;
-        }
-        if(i<(mmX*5)&&aX&&!bX){
-          i++;
-        }
-        if(i>=(mmX*5)&&aX&&!bX){
-          stepArry[0]=1;
-          stepArry[3]=1;
-          bX=1;
-        }
-        if(bX==1&&digitalRead(homeX)){
-          cX=1;
-        }
-      } else cX=1;
-      if(hS_Y){
-        if(!digitalRead(homeY)&&!aY&&!bY){
-          stepArry[1]=1;
-          stepArry[4]=1;
-        }
-        if(digitalRead(homeY)&&!aY&&!bY){
-          stepArry[1]=1;
-          stepArry[4]=0;
-          aY=1;
-        }
-        if(j<850&&aY&&!bY){
-          j++;
-        }
-        if(j>=850&&aY&&!bY){
-          stepArry[1]=1;
-          stepArry[4]=1;
-          bY=1;
-        }
-        if(bY==1&&digitalRead(homeY)){
-          cY=1;
-        }
-      } else cY=1;
-      if(hS_Z){
-        if(!digitalRead(homeZ)&&!aZ&&!bZ){
-          stepArry[2]=1;
-          stepArry[5]=1;
-        }
-        if(digitalRead(homeZ)&&!aZ&&!bZ){
-          stepArry[2]=1;
-          stepArry[5]=0;
-          aZ=1;
-        }
-        if(k<(mmZ*5)&&aZ&&!bZ){
-          k++;
-        }
-        if(k>=(mmZ*5)&&aZ&&!bZ){
-          stepArry[2]=1;
-          stepArry[5]=1;
-          bZ=1;
-        }
-        if(bZ==1&&digitalRead(homeZ)){
-          cZ=1;
-        }
-      } else cZ=1;
-      if(cX&&cY&&cZ){
-        done=1;
-      }
+boolean limit(int axis, boolean h_e){
+  switch(axis){
+    case 1: 
+      if(h_e) return !digitalRead(endX);
+      else return !digitalRead(homeX);
+    case 2: 
+      if(h_e) return !digitalRead(endY);
+      else return !digitalRead(homeY);
+    case 3: 
+      if(h_e) return !digitalRead(endZ);
+      else return !digitalRead(homeZ);
+    default:
+      return 0;
+  }
+}
+void home(){
+  stepArry[1]=0;
+  stepArry[2]=0;
+  stepArry[0]=1; //Home X
+  stepArry[3]=1;
+  if(hS_X){
+    while(!limit(1,0)){
       step();
     }
-    RposX=0;
-    RposY=0;
-    RposZ=0;
+    stepArry[3]=0;
+    for(int i=0;i<mmX*5;i++){
+      step();
+    }
+    stepArry[3]=1;
+    while(!limit(1,0)){
+      step();
+    }
+    stepArry[0]=0;
+  }
+  if(hS_Y){
+    stepArry[1]=1; //Home Y
+    stepArry[4]=1;
+    while(!limit(2,0)){
+      step();
+    }
+    stepArry[4]=0;
+    for(int i=0;i<mmY*5;i++){
+      step();
+    }
+    stepArry[4]=1;
+    while(!limit(2,0)){
+      step();
+    }
+    stepArry[1]=0;
+  }
+  if(hS_Z){
+    stepArry[2]=1;
+    stepArry[5]=0;
+    while(!limit(3,0)){
+      step();
+    }
+    stepArry[5]=1;
+    for(int i=0;i<mmZ*5;i++){
+      step();
+    }
+    stepArry[5]=0;
+    while(!limit(3,0)){
+      step();
+    }
+  }
+  RposX=0;
+  RposY=0;
+  RposZ=0;
 }
 int sig(long var){
   if(var>0) return 1;
@@ -304,7 +276,6 @@ int line(float movX, float movY){
   float err,el,es;
   if (dX<0) dX=-dX;
   if (dY<0) dY=-dY;
-  int modeInverse;
   if (dX>dY){
     pdx=incx;
     pdy=0;
@@ -312,7 +283,6 @@ int line(float movX, float movY){
     ddy=incy;
     es=dY;
     el=dX;
-    modeInverse = XmodeInverse;
   }
   else{
     pdx=0;
@@ -321,10 +291,9 @@ int line(float movX, float movY){
     ddy=incy;
     es=dX;
     el=dY;
-    modeInverse = YmodeInverse;
   }
   err=el*0.5;
-  for(long i=0;i<el;i=i+modeInverse){
+  for(long i=0;i<el;i++){
     err=err-es;
     if(err<0){
       err=err+el;
@@ -377,117 +346,91 @@ void arc(float cx,float cy,float x,float y,float dir){
     }
   line(x,y);
 }
-void setModeX(int m, boolean s){
-  if(m == 1){
-    digitalWrite(Xmode0,LOW);
-    digitalWrite(Xmode1,LOW);
-    digitalWrite(Xmode2,LOW);
-    XmodeInverse = 32;
-    if(s) Serial.println(F("X Microsteps set to: 1"));
-  }  
-  if(m == 2){
-    digitalWrite(Xmode0,HIGH);
-    digitalWrite(Xmode1,LOW);
-    digitalWrite(Xmode2,LOW);
-    XmodeInverse = 16;
-    if(s) Serial.println(F("X Microsteps set to: 2"));
-  }
-  if(m == 4){
-    digitalWrite(Xmode0,LOW);
-    digitalWrite(Xmode1,HIGH);
-    digitalWrite(Xmode2,LOW);
-    XmodeInverse = 8;
-    if(s) Serial.println(F("X Microsteps set to: 4"));
-  }
-  if(m == 8){
-    digitalWrite(Xmode0,HIGH);
-    digitalWrite(Xmode1,HIGH);
-    digitalWrite(Xmode2,LOW);
-    XmodeInverse = 4;
-    if(s) Serial.println(F("X Microsteps set to: 8"));
-  }
-  if(m == 16){
-    digitalWrite(Xmode0,LOW);
-    digitalWrite(Xmode1,LOW);
-    digitalWrite(Xmode2,HIGH);
-    XmodeInverse = 2;
-    if(s) Serial.println(F("X Microsteps set to: 16"));
-  }
-  if(m == 32){
-    digitalWrite(Xmode0,HIGH);
-    digitalWrite(Xmode1,HIGH);
-    digitalWrite(Xmode2,HIGH);
-    XmodeInverse = 1;
-    if(s) Serial.println(F("X Microsteps set to: 32"));
-  }
-}
-void setModeY(int m, boolean s){
-  if(m == 1){
-    digitalWrite(Ymode0,LOW);
-    digitalWrite(Ymode1,LOW);
-    digitalWrite(Ymode2,LOW);
-    YmodeInverse = 32;
-    if(s) Serial.println(F("Y Microsteps set to: 1"));
-  }
-  if(m == 2){
-    digitalWrite(Ymode0,HIGH);
-    digitalWrite(Ymode1,LOW);
-    digitalWrite(Ymode2,LOW);
-    YmodeInverse = 16;
-    if(s) Serial.println(F("Y Microsteps set to: 2"));
-  }
-  if(m == 4){
-    digitalWrite(Ymode0,LOW);
-    digitalWrite(Ymode1,HIGH);
-    digitalWrite(Ymode2,LOW);
-    YmodeInverse = 8;
-    if(s) Serial.println(F("Y Microsteps set to: 4"));
-  }
-  if(m == 8){
-    digitalWrite(Ymode0,HIGH);
-    digitalWrite(Ymode1,HIGH);
-    digitalWrite(Ymode2,LOW);
-    YmodeInverse = 4;
-    if(s) Serial.println(F("Y Microsteps set to: 8"));
-  }
-  if(m == 16){
-    digitalWrite(Ymode0,LOW);
-    digitalWrite(Ymode1,LOW);
-    digitalWrite(Ymode2,HIGH);
-    YmodeInverse = 2;
-    if(s) Serial.println(F("Y Microsteps set to: 16"));
-  }
-  if(m == 32){
-    digitalWrite(Ymode0,HIGH);
-    digitalWrite(Ymode1,HIGH);
-    digitalWrite(Ymode2,HIGH);
-    YmodeInverse = 1;
-    if(s) Serial.println(F("Y Microsteps set to: 32"));
-  }
-}
-void setModeZ(int m, boolean s){
-  if(m == 1){
-    ZmodeInverse = 32;
-    if(s) Serial.println(F("Z Microsteps set to: 1"));
-  }  
-  if(m == 2){
-    ZmodeInverse = 16;
-    if(s) Serial.println(F("Z Microsteps set to: 2"));
-  }
-  if(m == 4){
-    ZmodeInverse = 8;
-    if(s) Serial.println(F("Z Microsteps set to: 4"));
-  }
-  if(m == 8){
-    ZmodeInverse = 4;
-    if(s) Serial.println(F("Z Microsteps set to: 8"));
-  }
-  if(m == 16){
-    ZmodeInverse = 2;
-    if(s) Serial.println(F("Z Microsteps set to: 16"));
-  }
-  if(m == 32){
-    ZmodeInverse = 1;
-    if(s) Serial.println(F("Z Microsteps set to: 32"));
-  }
-}
+
+/*void homeZero(){
+    boolean done=0;
+    boolean aX,aY,aZ,bX,bY,bZ,cX,cY,cZ = 0;
+    long i = 0;
+    long j = 0;
+    long k = 0;
+    while(!done){
+    //  if(hS_X){
+        Serial.println("1");
+        if(!digitalRead(homeX)&&!aX&&!bX){
+          stepArry[0]=1;
+          stepArry[3]=1;
+        }
+        if(digitalRead(homeX)&&!aX&&!bX){
+          stepArry[0]=1;
+          stepArry[3]=0;
+          aX=1;
+        }
+        if(i<(mmX*5)&&aX&&!bX){
+          i++;
+        }
+        if(i>=(mmX*5)&&aX&&!bX){
+          stepArry[0]=1;
+          stepArry[3]=1;
+          bX=1;
+        }
+        if(bX==1&&digitalRead(homeX)){
+          cX=1;
+        }
+     // } else cX=1;
+     // if(hS_Y){
+        Serial.println("2");
+        if(!digitalRead(homeY)&&!aY&&!bY){
+          stepArry[1]=1;
+          stepArry[4]=1;
+        }
+        if(digitalRead(homeY)&&!aY&&!bY){
+          stepArry[1]=1;
+          stepArry[4]=0;
+          aY=1;
+        }
+        if(j<850&&aY&&!bY){
+          j++;
+        }
+        if(j>=850&&aY&&!bY){
+          stepArry[1]=1;
+          stepArry[4]=1;
+          bY=1;
+        }
+        if(bY==1&&digitalRead(homeY)){
+          cY=1;
+        }
+     // } else cY=1;
+     // if(hS_Z){
+        Serial.println("1");
+        if(!digitalRead(homeZ)&&!aZ&&!bZ){
+          stepArry[2]=1;
+          stepArry[5]=1;
+        }
+        if(digitalRead(homeZ)&&!aZ&&!bZ){
+          stepArry[2]=1;
+          stepArry[5]=0;
+          aZ=1;
+        }
+        if(k<(mmZ*5)&&aZ&&!bZ){
+          k++;
+        }
+        if(k>=(mmZ*5)&&aZ&&!bZ){
+          stepArry[2]=1;
+          stepArry[5]=1;
+          bZ=1;
+        }
+        if(bZ==1&&digitalRead(homeZ)){
+          cZ=1;
+        }
+   //   } else cZ=1;
+      Serial.println("3");
+      if(cX&&cY){
+        done=1;
+      }
+      step();
+    }
+    Serial.println("4");
+    RposX=0;
+    RposY=0;
+    RposZ=0;
+}*/
