@@ -35,7 +35,7 @@ print " ▓▒▒▒░░░░░░░░░▓▓▓▓▒▒  ▓▒▒▒�
 print " ▓▒▒▒▒░░░░░░░░░▓▓▒▒▒▒▒▒▒▒▒▒▒▒   ▒▒▒▒"
 print "  ▓▒▒▒▒▒░░░░▓▓▓▒▒▒▒▒▒▒▒▒▒▒▒▒▒  ▄▀"
 print "  ▓▓▒▒▒▒▒░░░░░▓    ▒▒▒▒▒▒▒▒▒▒▒▀"
-rint ""
+print ""
 print ""
 
 filterForZ = False;
@@ -48,21 +48,15 @@ depth = 0
 deltime = 0
 configed = False
 try:
-	if not usegui:	
-		port = sys.argv[2]
-		baud = sys.argv[3]
-
-		filename = sys.argv[4]
-		depth = int(sys.argv[5])
-
-		if sys.argv[6] == "True":
-			debugging = True
-	
-		deltime = int(sys.argv[7])/1000.0
-
-		if sys.argv[7] == "True":
-			filterForZ = True	
-		configed = True
+	port = sys.argv[1]
+	baud = sys.argv[2]
+	filename = sys.argv[3]
+	depth = int(sys.argv[4])
+	if sys.argv[5] == "True":
+		debugging = True
+	deltime = int(sys.argv[6])/1000.0
+	if sys.argv[7] == "True":
+		filterForZ = True	
 except:
 	print "Usage: [\"port\"] [baudrate] [\"path-to-gcode\"] [Dropping chars] [Debugging] [deltime] [Use-Z-Axis]"
 	exit()  
@@ -83,11 +77,15 @@ except:
 	exit()
 print "Connection established with " + baud + " baud"
 
-ser.write("home")
-print "Waiting for home"
-time.sleep(10.0)
-print "Homed"
+#ser.write("home")
+#print "Waiting for home"
+#time.sleep(10.0)
+#print "Homed"
 
+ser.write("T=200")
+time.sleep(0.5)
+ser.write("thisIsHome")
+time.sleep(1)
 try:
 	target = open(filename)
 except:
@@ -118,7 +116,7 @@ for i in xrange(len(x)):
 		use = False
 	if use:
 		ser.write(x[i][:-depth])
-		print "Done " + str((i/(len(x)*1.0))*100) + "% "
+		print "Done " + round(str((i/(len(x)*1.0))*100)) + "% "
 		if debugging: print "w"
 		if debugging: print x[i][:-depth]
 		o = True
