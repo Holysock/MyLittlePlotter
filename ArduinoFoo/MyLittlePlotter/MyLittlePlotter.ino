@@ -36,8 +36,8 @@ float RposZ; //             Zposition
 float mmX = 1600; // step/mm ratio
 float mmY = 1600;
 float mmZ = 1600;
-long endPosX = 528000; // Area in steps X
-long endPosY = 960000; //               Y
+//long endPosX = 528000; // Area in steps X
+//long endPosY = 960000; //               Y
 long CM_PER_SEGMENT = 1000; //Factor for arc interpolation
 String a;
 
@@ -101,7 +101,7 @@ void getSerial(){
       if(g==1||g==0){
         float eX = Serial.parseFloat()*mmX;
         float eY = Serial.parseFloat()*mmY;
-        float eZ = Serial.parseFloat()*mmZ;
+       //float eZ = Serial.parseFloat()*mmZ;
         line(eX,eY);
       }
       else if(g==2||g==3){
@@ -209,6 +209,7 @@ boolean limit(int axis, boolean h_e){
   }
 }
 void home(){
+  int temp=t;
   stepArry[1]=0;
   stepArry[2]=0;
   stepArry[0]=1; //Home X
@@ -217,7 +218,8 @@ void home(){
     while(!limit(1,0)){
       step();
     }
-    stepArry[3]=0;
+    stepArry[3]=0;;
+    t=t*2;
     for(int i=0;i<mmX*5;i++){
       step();
     }
@@ -228,12 +230,14 @@ void home(){
     stepArry[0]=0;
   }
   if(hS_Y){
+    t=temp;
     stepArry[1]=1; //Home Y
     stepArry[4]=1;
     while(!limit(2,0)){
       step();
     }
     stepArry[4]=0;
+    t=t*2;
     for(int i=0;i<mmY*5;i++){
       step();
     }
@@ -244,12 +248,14 @@ void home(){
     stepArry[1]=0;
   }
   if(hS_Z){
+    t=temp;
     stepArry[2]=1;
     stepArry[5]=0;
     while(!limit(3,0)){
       step();
     }
     stepArry[5]=1;
+    t=t*2;
     for(int i=0;i<mmZ*5;i++){
       step();
     }
@@ -257,10 +263,12 @@ void home(){
     while(!limit(3,0)){
       step();
     }
+    t=temp;
   }
   RposX=0;
   RposY=0;
   RposZ=0;
+  t=temp;
 }
 int sig(long var){
   if(var>0) return 1;
@@ -308,7 +316,7 @@ int line(float movX, float movY){
       if(pdx>0) stepArry[3]=0;
       else if(pdx<0) stepArry[3]=1;
       if(pdy>0) stepArry[4]=0;
-      else if(pdy<0) stepArry[3]=1;
+      else if(pdy<0) stepArry[4]=1;
       stepArry[0]=abs(pdx);
       stepArry[1]=abs(pdy);
     }

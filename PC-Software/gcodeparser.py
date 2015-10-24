@@ -38,7 +38,7 @@ print "  ▓▓▒▒▒▒▒░░░░░▓    ▒▒▒▒▒▒▒▒▒�
 print ""
 print ""
 
-filterForZ = False;
+filterForZ = True;
 debugging = False
 usegui = False
 port = ""
@@ -76,16 +76,17 @@ except:
 	print "Try to reconnect the device or run as root/fakeroot"
 	exit()
 print "Connection established with " + baud + " baud"
+ser.write("on")
+time.sleep(2)
+ser.write("G28")
+print "Waiting for home"
+time.sleep(10.0)
+print "Homed"
 
-#ser.write("home")
-#print "Waiting for home"
-#time.sleep(10.0)
-#print "Homed"
-
-ser.write("T=200")
-time.sleep(0.5)
-ser.write("thisIsHome")
-time.sleep(1)
+#ser.write("T=10")
+#time.sleep(0.5)
+#ser.write("thisIsHome")
+#time.sleep(1)
 try:
 	target = open(filename)
 except:
@@ -116,7 +117,7 @@ for i in xrange(len(x)):
 		use = False
 	if use:
 		ser.write(x[i][:-depth])
-		print "Done " + round(str((i/(len(x)*1.0))*100)) + "% "
+		print "Done " + str((i/(len(x)*1.0))*100) + "% "
 		if debugging: print "w"
 		if debugging: print x[i][:-depth]
 		o = True
