@@ -9,25 +9,28 @@
 =============================================================================
 =============================================================================
 */
-int stepX = 2; //pinout
-int stepY = 3;
-int stepZ = 8;
-int dirX = 4;
-int dirY = 5;
-int dirZ = 12;
-int enable =6;
+int stepX = 7; //pinout
+int stepY = 5;
+int stepZ = 4;
+int dirX = 8;
+int dirY = 6;
+int dirZ = 3;
+int enable =2;
+int led = 9; //blinky
+int fan = 11; //#1 fan :3
 boolean hS_X = 1; //1 if there is a limit switch for respective axis
 boolean hS_Y = 1;
 boolean hS_Z = 0;
 boolean endS_X = 0;
 boolean endS_Y = 0;
 boolean endS_Z = 0;
-int homeX = 10; 
-int homeY = 11; 
-int homeZ;
+int homeX = A0; 
+int homeY = A1;
+int homeZ = A2;
 int endX; 
 int endY; 
 int endZ;
+int someSensor = A5;
 boolean stepArry[6] = {0,0,0,0,0,0}; //X-step,X-dir,Y-step,Y-dir,Z-step,Z-dir
 int t = 10; //time between steps. Change with T[int]
 float RposX; //Your current Xposition in steps
@@ -40,6 +43,9 @@ float mmZ = 1600;
 //long endPosY = 960000; //               Y
 long CM_PER_SEGMENT = 1000; //Factor for arc interpolation
 String a;
+int ledF;
+boolean z_led=0;
+int just_a_number;
 
 void setup() {
   Serial.begin(9600);
@@ -52,22 +58,56 @@ void setup() {
   pinMode(dirY,OUTPUT);
   pinMode(dirZ,OUTPUT);
   pinMode(enable,OUTPUT);
+  pinMode(led,OUTPUT);
+  pinMode(fan,OUTPUT);
   if(hS_X) pinMode(homeX,INPUT_PULLUP);
   if(hS_Y) pinMode(homeY,INPUT_PULLUP);
   if(hS_Z) pinMode(homeZ,INPUT_PULLUP);
   if(endS_X) pinMode(endX,INPUT_PULLUP);
   if(endS_Y) pinMode(endY,INPUT_PULLUP);
   if(endS_Z) pinMode(endZ,INPUT_PULLUP);
-  power(0);
+   power(0);
   Serial.println(F("Motors are on."));
+  fanControll(150);
 }
 void loop() {
   getSerial(); 
   step();
+  blinky();
 } 
 //#########################################################################################
+void blinky(){
+  if(ledF<255&&!z_led){
+    if(just_a_number<20) just_a_number++;
+    else{
+      ledF++;
+      just_a_number=0;
+    }
+  }
+  else if (ledF>=0&&z_led){
+    if(just_a_number<20) just_a_number++;
+    else{
+      ledF--;
+      just_a_number=0;
+    }
+  }
+  else if (ledF>=255&&!z_led) z_led=1;
+  else if (ledF<=0&&z_led) z_led=0;
+  analogWrite(led,ledF);
+  /*if(z_led){
+    digitalWrite(led,z_led);
+    z_led=0;
+  }
+  else{
+    digitalWrite(led,z_led);
+    z_led=1;
+  }*/
+}
 void power(boolean on){
   digitalWrite(enable,on);
+}
+void fanControll(int pwm){
+  analogWrite(fan,pwm);
 }
 void step (){
   if(hS_X&&limit(1,0)&&stepArry[3]) stepArry[0]=0;
@@ -102,7 +142,9 @@ void getSerial(){
         float eX = Serial.parseFloat()*mmX;
         float eY = Serial.parseFloat()*mmY;
        //float eZ = Serial.parseFloat()*mmZ;
+        fanControll(255);
         line(eX,eY);
+        fanControll(150);
       }
       else if(g==2||g==3){
         float eX = Serial.parseFloat()*mmX;
@@ -112,7 +154,9 @@ void getSerial(){
         boolean dir;
         if(g==3) dir = 0;
         else dir = 1;
+        fanControll(255);
         arc(RposX+i,RposY+j,eX,eY,dir);
+        fanControll(150);
       }
       else if(g==4){
         delay(Serial.parseInt());
@@ -209,6 +253,7 @@ boolean limit(int axis, boolean h_e){
   }
 }
 void home(){
+  fanControll(255);
   int temp=t;
   stepArry[1]=0;
   stepArry[2]=0;
@@ -269,6 +314,7 @@ void home(){
   RposY=0;
   RposZ=0;
   t=temp;
+  fanControll(150);
 }
 int sig(long var){
   if(var>0) return 1;
@@ -343,14 +389,14 @@ void arc(float cx,float cy,float x,float y,float dir){
   sweep=angle2-angle1;
   float len = abs(sweep) * radius;
   int i;
-  int num_segments = abs(floor( len / CM_PER_SEGMENT ));
-  float nx, ny,angle3, fraction;
-  for(i=0;i<num_segments;i++){
-    fraction = ((float)i)/((float)num_segments);
+  int segments = abs(floor( len / CM_PER_SEGMENT ));
+  float newX, newY,angle3, fraction;
+  for(i=0;i<segments;i++){
+    fraction = ((float)i)/((float)segments);
     angle3 = (sweep * fraction)+angle1;
-    nx = cx + sin(angle3)*radius;
-    ny = cy + cos(angle3)*radius;
-    line(nx,ny);
+    newX = cx + sin(angle3)*radius;
+    newY = cy + cos(angle3)*radius;
+    line(newX,newY);
     }
   line(x,y);
 }
@@ -442,3 +488,4 @@ void arc(float cx,float cy,float x,float y,float dir){
     RposY=0;
     RposZ=0;
 }*/
+
