@@ -9,11 +9,11 @@
 =============================================================================
 =============================================================================
 */
-int stepX = 7; //pinout
-int stepY = 5;
+int stepX = 5; //pinout
+int stepY = 7;
 int stepZ = 4;
-int dirX = 8;
-int dirY = 6;
+int dirX = 6;
+int dirY = 8;
 int dirZ = 3;
 int enable =2;
 int led = 9; //blinky
@@ -24,15 +24,18 @@ boolean hS_Z = 0;
 boolean endS_X = 0;
 boolean endS_Y = 0;
 boolean endS_Z = 0;
-int homeX = A0; 
-int homeY = A1;
+int homeX = A1;
+int homeY = A0;
 int homeZ = A2;
 int endX; 
 int endY; 
 int endZ;
 int someSensor = A5;
 boolean stepArry[6] = {0,0,0,0,0,0}; //X-step,X-dir,Y-step,Y-dir,Z-step,Z-dir
-int t = 10; //time between steps. Change with T[int]
+float buffer[10][5]; //SOme Fancy stuff
+int buffer_pointer;
+boolean enable_buffer = 0;
+int t = 40; //time between steps. Change with T[int]
 float RposX; //Your current Xposition in steps
 float RposY; //             Yposition
 float RposZ; //             Zposition
@@ -66,7 +69,7 @@ void setup() {
   if(endS_X) pinMode(endX,INPUT_PULLUP);
   if(endS_Y) pinMode(endY,INPUT_PULLUP);
   if(endS_Z) pinMode(endZ,INPUT_PULLUP);
-   power(0);
+  power(0);
   Serial.println(F("Motors are on."));
   fanControll(150);
 }
@@ -135,43 +138,61 @@ void step (){
   delayMicroseconds(t);
 }
 void getSerial(){ 
-  if(Serial.available()<=0) return;
-  if(Serial.peek()==71){
-      int g = Serial.parseInt();
-      if(g==1||g==0){
-        float eX = Serial.parseFloat()*mmX;
-        float eY = Serial.parseFloat()*mmY;
-       //float eZ = Serial.parseFloat()*mmZ;
-        fanControll(255);
-        line(eX,eY);
-        fanControll(150);
-      }
-      else if(g==2||g==3){
-        float eX = Serial.parseFloat()*mmX;
-        float eY = Serial.parseFloat()*mmY;
-        float i = Serial.parseFloat()*mmX;
-        float j = Serial.parseFloat()*mmY;
-        boolean dir;
-        if(g==3) dir = 0;
-        else dir = 1;
-        fanControll(255);
-        arc(RposX+i,RposY+j,eX,eY,dir);
-        fanControll(150);
-      }
-      else if(g==4){
-        delay(Serial.parseInt());
-      }
-      else if(g==28){
-        home();
-      }
+if(Serial.available()<=0) return;
+   if(!enable_buffer){
+      if(Serial.peek()==71){
+        int g = Serial.parseInt();
+        if(g==1||g==0){
+          float eX = Serial.parseFloat()*mmX;
+          float eY = Serial.parseFloat()*mmY;
+         //float eZ = Serial.parseFloat()*mmZ;
+          fanControll(255);
+          line(abs(eX),abs(eY));
+          fanControll(150);
+        }
+          else if(g==2||g==3){
+          float eX = Serial.parseFloat()*mmX;
+          float eY = Serial.parseFloat()*mmY;
+          float i = Serial.parseFloat()*mmX;
+          float j = Serial.parseFloat()*mmY;
+          boolean dir;
+          if(g==3) dir = 0;
+          else dir = 1;
+          fanControll(255);
+          arc(RposX+i,RposY+j,abs(eX),abs(eY),dir);
+          fanControll(150);
+        }
+        else if(g==4){
+          delay(Serial.parseInt());
+        }
+        else if(g==28){
+          home();
+        }
     Serial.println(F("Done."));
     Serial.readString();
     return;
+    }
+  }
+  else{
+    Serial.println(F("Done."));
+  }
+  if(Serial.peek()==66){
+    enable_buffer=Serial.parseInt();
+    if(enable_buffer) Serial.print(F("Buffer is enabled"));
+    else Serial.print(F("Buffer is disabled"));
   }
   if(Serial.peek()==84){
     t=Serial.parseInt();
-    Serial.print("Time set to: ");
+    Serial.print(F("Time set to: "));
     Serial.println(t);
+    return;
+  }
+  if(Serial.peek()==70){
+    int f=Serial.parseInt();
+    Serial.print(F("Fanspeed set to: "));
+    Serial.println(f);
+    fanControll(f);
+    return;
   }
   a = Serial.readString();
   if(a=="w"){
@@ -237,6 +258,19 @@ void getSerial(){
   a="none";
 } 
 //################################################################################################
+void setBuffer(float x, float y, float z, float j, float i,int g){
+  if(g==1)buffer[buffer_pointer][0]=-x;
+  else buffer[buffer_pointer][0]=x;
+  if(g==2)buffer[buffer_pointer][1]=-y;
+  else buffer[buffer_pointer][1]=y;
+  if(g=3)buffer[buffer_pointer][2]=-z;
+  else buffer[buffer_pointer][2]=z;
+  buffer[buffer_pointer][3]=j;
+  buffer[buffer_pointer][4]=i;
+}
+float getBuffer(int p1, int p2){
+  return buffer[p1][p2];
+} 
 boolean limit(int axis, boolean h_e){
   switch(axis){
     case 1: 

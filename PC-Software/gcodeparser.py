@@ -38,7 +38,7 @@ print "  ▓▓▒▒▒▒▒░░░░░▓    ▒▒▒▒▒▒▒▒▒�
 print ""
 print ""
 
-filterForZ = True;
+filterForZ = True
 debugging = False
 usegui = False
 port = ""
@@ -47,6 +47,8 @@ filename = ""
 depth = 0
 deltime = 0
 configed = False
+manualZ = False 
+
 try:
 	port = sys.argv[1]
 	baud = sys.argv[2]
@@ -56,12 +58,12 @@ try:
 		debugging = True
 	deltime = int(sys.argv[6])/1000.0
 	if sys.argv[7] == "True":
-		filterForZ = True	
+		filterForZ = True
+	if filterForZ and sys.argv[8] == "True":
+		manualZ = True	
 except:
-	print "Usage: [\"port\"] [baudrate] [\"path-to-gcode\"] [Dropping chars] [Debugging] [deltime] [Use-Z-Axis]"
+	print "Usage: [\"port\"] [baudrate] [\"path-to-gcode\"] [Dropping chars] [Debugging] [deltime] [Use-Z-Axis] [Manual-Z-Axis]"
 	exit()  
-
-
 
 print "Trying to connect to the device at " + port
 ser = serial.Serial()
@@ -79,9 +81,7 @@ print "Connection established with " + baud + " baud"
 ser.write("on")
 time.sleep(2)
 ser.write("G28")
-print "Waiting for home"
-time.sleep(10.0)
-print "Homed"
+raw_input("Homed?")
 
 #ser.write("T=10")
 #time.sleep(0.5)
@@ -100,21 +100,28 @@ v = ""
 while not v is None:
 	try:
 		v = target.next()
+		if(debugging): print v
 		x.append(v)
 	except:
-		print "Filed readed succesfully..."
+		print "Finished reading file"
 		v = None
 k = l = ' '
 while not k == '':
 	k = ser.read()
 	l += k
 print l
+
 for i in xrange(len(x)):
+	if(debugging): print "for"
 	use = True
 	if not "G00" in x[i] and not "G01" in x[i] and not "G02" in x[i] and not "G03" in x[i]:
 		use = False
 	if filterForZ and "Z" in x[i]:
 		use = False
+		if manualZ:
+			print x[i]
+			raw_input("Done moving Z-Axis?")
+	if(debugging): print "USE: " + str(use) 
 	if use:
 		ser.write(x[i][:-depth])
 		print "Done " + str((i/(len(x)*1.0))*100) + "% "
