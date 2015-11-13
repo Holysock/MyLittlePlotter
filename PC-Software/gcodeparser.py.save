@@ -120,7 +120,7 @@ for i in xrange(len(x)):
 		use = False
 		if manualPen:
 			print x[i]
-if use:
+	if use:
 		ser.write(x[i][:-depth])
 		print "Done " + str((i/(len(x)*1.0))*100) + "% "
 		if debugging: print "w"

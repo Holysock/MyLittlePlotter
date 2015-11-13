@@ -8,8 +8,17 @@ import serial
 import sys, os, time
 import subprocess as sp
 
+W  = '\033[0m'  # white (normal)
+R  = '\033[31m' # red
+G  = '\033[32m' # green
+O  = '\033[33m' # orange
+B  = '\033[34m' # blue
+P  = '\033[35m' # purple
+C  = '\033[36m' # cyan
+GR = '\033[37m' # gray
+
 sp.call("clear",shell = True)
-print "Welcome at Nick's super duper mega plotter gcode parser"
+print "Welcome at Nick's super duper mega plotter gcode parser" + P
 print "                                  ▓▓▓▓▓▓"
 print "                         ▓▓▓▓▓▓░░░░░░░▓▓▓▓▓"
 print "                     ▓▓▓▒▒▒▒▒▒▒░░░░░▓▓▓▓▓▓▓▓▓"
@@ -36,7 +45,7 @@ print " ▓▒▒▒▒░░░░░░░░░▓▓▒▒▒▒▒▒▒▒
 print "  ▓▒▒▒▒▒░░░░▓▓▓▒▒▒▒▒▒▒▒▒▒▒▒▒▒  ▄▀"
 print "  ▓▓▒▒▒▒▒░░░░░▓    ▒▒▒▒▒▒▒▒▒▒▒▀"
 print ""
-print ""
+print W + ""
 
 filterForZ = True
 debugging = False
@@ -62,10 +71,10 @@ try:
 	if filterForZ and sys.argv[8] == "True":
 		manualZ = True	
 except:
-	print "Usage: [\"port\"] [baudrate] [\"path-to-gcode\"] [Dropping chars] [Debugging] [deltime] [Use-Z-Axis] [Manual-Z-Axis]"
+	print "Usage: " + R + "[\"port\"] [baudrate] [\"path-to-gcode\"] [Dropping chars] [Debugging] [deltime] [Use-Z-Axis] [Manual-Z-Axis]"
 	exit()  
 
-print "Trying to connect to the device at " + port
+print B + "Trying to connect to the device at " + port
 ser = serial.Serial()
 ser.baudrate = baud
 ser.port = port
@@ -74,14 +83,14 @@ ser.setTimeout(0.5)
 try:
 	ser.open()
 except:
-	print "Unable to connect..."
-	print "Try to reconnect the device or run as root/fakeroot"
+	print R + "Unable to connect..."
+	print R + "Try to reconnect the device or run as root/fakeroot"
 	exit()
-print "Connection established with " + baud + " baud"
+print G + "Connection established with " + baud + " baud"
 ser.write("on")
 time.sleep(2)
 ser.write("G28")
-raw_input("Homed?")
+raw_input(C + "Homed?")
 
 #ser.write("T=10")
 #time.sleep(0.5)
@@ -90,7 +99,7 @@ raw_input("Homed?")
 try:
 	target = open(filename)
 except:
-	print "File " + filename + " not found..."
+	print R + "File " + filename + " not found..."
 
 x = []
 v = ""
@@ -103,16 +112,15 @@ while not v is None:
 		if(debugging): print v
 		x.append(v)
 	except:
-		print "Finished reading file"
+		print G + "Finished reading file"
 		v = None
 k = l = ' '
 while not k == '':
 	k = ser.read()
 	l += k
 print l
-
 for i in xrange(len(x)):
-	if(debugging): print "for"
+	if(debugging): print W + "for"
 	use = True
 	if not "G00" in x[i] and not "G01" in x[i] and not "G02" in x[i] and not "G03" in x[i]:
 		use = False
@@ -120,17 +128,17 @@ for i in xrange(len(x)):
 		use = False
 		if manualZ:
 			print x[i]
-			raw_input("Done moving Z-Axis?")
-	if(debugging): print "USE: " + str(use) 
+			raw_input(C + "Done moving Z-Axis?")
+	if(debugging): print W + "USE: " + str(use) 
 	if use:
 		ser.write(x[i][:-depth])
-		print "Done " + str((i/(len(x)*1.0))*100) + "% "
-		if debugging: print "w"
-		if debugging: print x[i][:-depth]
+		print(G + "Done " + str((i/(len(x)*1.0))*100) + "% ")
+		if debugging: print W + "w"
+		if debugging: print W + x[i][:-depth]
 		o = True
 		while o:
 			i = ser.read()
-			if debugging: print i
+			if debugging: print W + i
 			if(i == 'D'):
 				o = False
 		v = True
@@ -141,5 +149,8 @@ for i in xrange(len(x)):
 			if ser.read() == '': v = False
 		time.sleep(deltime)
 		
-print "DONE!!"
+print G + "*DONE!!*"
 
+def write(text):
+	sys.stdout.write(text)
+	sys.stdout.flush()
