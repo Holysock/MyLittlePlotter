@@ -1,9 +1,12 @@
 import plotlib
 import pygame, sys, time
 
-img_path = sys.argv[1]
-
-DPI = int(sys.argv[2])
+try:
+	img_path = sys.argv[1]
+	DPI = int(sys.argv[2])
+except(IndexError):
+	print "USAGE: python image_to_gcode.py [img_path] [resolution] > filename_of_your_gcode_file.gcode"
+	quit()
 
 img = pygame.image.load(img_path)
 
