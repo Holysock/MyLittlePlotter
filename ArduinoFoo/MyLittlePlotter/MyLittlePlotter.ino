@@ -2,7 +2,7 @@
 =============================================================================
 =============================================================================
 =                                                                           =
-=             MyLittlePlotter V0.95 APLHA 11.Oct 2015                       =
+=             MyLittlePlotter V0.95 APLHA 7.Nov 2015                       =
 =                   by Nick S. Lemberger aka Holysock                       =
 =                      nick-lemberger@live.de                               =
 =                                                                           =
@@ -32,7 +32,7 @@ int endY;
 int endZ;
 int someSensor = A5;
 boolean stepArry[6] = {0,0,0,0,0,0}; //X-step,X-dir,Y-step,Y-dir,Z-step,Z-dir
-float buffer[10][5]; //SOme Fancy stuff
+float buffer[10][5]; //Semi-Dynamic databuffer / Unfinished
 int buffer_pointer;
 boolean enable_buffer = 0;
 int t = 40; //time between steps. Change with T[int]
@@ -53,7 +53,7 @@ int just_a_number;
 void setup() {
   Serial.begin(9600);
   Serial.println(F("Nyello! :3"));
-  Serial.println(F(" MyLittlePlotter V0.95 APLHA 11.Oct 2015 by Nick S. Lemberger aka Holysock."));
+  Serial.println(F(" MyLittlePlotter V0.95 APLHA 7.Nov 2015 by Nick S. Lemberger aka Holysock."));
   pinMode(stepX,OUTPUT);
   pinMode(stepY,OUTPUT);
   pinMode(stepZ,OUTPUT);
@@ -168,15 +168,15 @@ if(Serial.available()<=0) return;
         else if(g==28){
           home();
         }
-    Serial.println(F("Done."));
+    Serial.println(F("D"));
     Serial.readString();
     return;
     }
   }
-  else{
-    Serial.println(F("Done."));
-  }
-  if(Serial.peek()==66){
+  //else{  //Unfinished. Semi-dynamic databuffer not yet fully implemented 
+    //Serial.println(F("D"));
+  //}
+  if(Serial.peek()==66){ // Unfinished. DO NOT USE B1 OR B0
     enable_buffer=Serial.parseInt();
     if(enable_buffer) Serial.print(F("Buffer is enabled"));
     else Serial.print(F("Buffer is disabled"));

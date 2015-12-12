@@ -1,6 +1,5 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
-
+#-*- coding: utf-8 -*-
 #Filter: ALLES was nicht mit G00 G01 G02 G03 anfaengt
 #Filter: Optional mit Z
 
@@ -9,7 +8,7 @@ import sys, os, time
 import subprocess as sp
 
 sp.call("clear",shell = True)
-print "Welcome at Nick's super duper mega plotter gcode parser"
+print "Gcode-Parser for use with Arduino MyLittlePlotter Firmware "
 print "                                  ▓▓▓▓▓▓"
 print "                         ▓▓▓▓▓▓░░░░░░░▓▓▓▓▓"
 print "                     ▓▓▓▒▒▒▒▒▒▒░░░░░▓▓▓▓▓▓▓▓▓"
@@ -35,8 +34,6 @@ print " ▓▒▒▒░░░░░░░░░▓▓▓▓▒▒  ▓▒▒▒�
 print " ▓▒▒▒▒░░░░░░░░░▓▓▒▒▒▒▒▒▒▒▒▒▒▒   ▒▒▒▒"
 print "  ▓▒▒▒▒▒░░░░▓▓▓▒▒▒▒▒▒▒▒▒▒▒▒▒▒  ▄▀"
 print "  ▓▓▒▒▒▒▒░░░░░▓    ▒▒▒▒▒▒▒▒▒▒▒▀"
-print ""
-print ""
 
 filterForZ = True
 debugging = False
@@ -69,7 +66,7 @@ print "Trying to connect to the device at " + port
 ser = serial.Serial()
 ser.baudrate = baud
 ser.port = port
-ser.setTimeout(0.5)
+ser.setTimeout(1)
 
 try:
 	ser.open()
@@ -120,7 +117,7 @@ for i in xrange(len(x)):
 		use = False
 		if manualZ:
 			print x[i]
-			raw_input("Done moving Z-Axis?")
+			raw_input("Done with Z-Axis / Laser ?")
 	if(debugging): print "USE: " + str(use) 
 	if use:
 		ser.write(x[i][:-depth])
@@ -133,12 +130,12 @@ for i in xrange(len(x)):
 			if debugging: print i
 			if(i == 'D'):
 				o = False
-		v = True
-		while v:
-			if ser.read() == '.': v = False
-		v = True
-		while v:
-			if ser.read() == '': v = False
+		#v = True
+		#while v:
+		#	if ser.read() == '.': v = False
+		#v = True
+		#while v:
+		#	if ser.read() == '': v = False
 		time.sleep(deltime)
 		
 print "DONE!!"
