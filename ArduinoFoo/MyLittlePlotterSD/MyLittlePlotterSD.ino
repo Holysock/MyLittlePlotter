@@ -6,60 +6,65 @@
 =============================================================================
 =============================================================================
 =                                                                           =
-=             MyLittlePlotter V1.2 APLHA 7.Dez 2015                         =
+=             MyLittlePlotter V1.5 APLHA 6.Jan 2016                         =
 =                   by Nick S. Lemberger aka Holysock                       =
 =                      nick-lemberger@live.de                               =
 =                                                                           =
 =============================================================================
 =============================================================================
 */
+#define debugging false
+#define debugging2 false
+#define debugging3 false
+#define debugging4 false
 
-int stepX = 5; //pinout
-int stepY = 7;
-int stepZ = 3;
-int dirX = 6;
-int dirY = 8;
-int dirZ = 4;
-int enable =2;
-int laser = 9; //pewpew
-boolean hS_X = 1; //1 if there is a limit switch for respective axis
-boolean hS_Y = 1;
-boolean hS_Z = 0;
-boolean endS_X = 0;
-boolean endS_Y = 0;
-boolean endS_Z = 0;
-int homeX = A1;
-int homeY = A0;
-int homeZ = A2;
-int endX; 
-int endY; 
-int endZ;
-int someSensor = A5;
+#define Z_mode false// 0 = use laser / 1 = use z-axis
+
+#define stepX 7 //pinout
+#define stepY 5
+#define stepZ 3
+#define dirX 8
+#define dirY 6
+#define dirZ 4
+#define enable 2
+#define laser 9 //pewpew
+#define someSensor A5
+#define homeX A1
+#define homeY A0
+#define homeZ A2
+#define endX 0 
+#define endY 0
+#define endZ 0
+
+#define hS_X true //1 if there is a limit switch for respective axis
+#define hS_Y true
+#define hS_Z false
+#define endS_X false
+#define endS_Y false
+#define endS_Z false
+
+#define CM_PER_SEGMENT 1000 //Factor for arc interpolation
+#define feedrate_MAX 15.625 // max feedrate = (1/[step/mm ratio of slowest axis]) * (1/[min. time between steps})
+#define accleration 1
+#define SLOWST_AXIS 1600.00
+
 boolean stepArry[6] = {0,0,0,0,0,0}; //X-step,X-dir,Y-step,Y-dir,Z-step,Z-dir
-int t = 40; 
-float RposX; //Your current Xposition in steps
-float RposY; //             Yposition
-float RposZ; //             Zposition
-float mmX = 1600; // step/mm ratio
-float mmY = 1600;
-float mmZ = 4000;
-//long endPosX = 528000; // Area in steps X
-//long endPosY = 960000; //               Y
-long CM_PER_SEGMENT = 1000; //Factor for arc interpolation
-boolean Z_mode = 0; // 0 = use laser / 1 = use z-axis
-int laserMax = 255;
-int laserMin = 0;
+int t = 40; //min time between steps
+double RposX; //Your current Xposition in steps
+double RposY; //             Yposition
+double RposZ; //             Zposition
+double mmX = 1600; // step/mm ratio
+double mmY = 1600;
+double mmZ = 1600;
+double feedrate = 15.625;// max feedrate
 byte nextByte;
 File file;
 String fileName;
-boolean debugging=0;
-boolean debugging2=0;
-boolean debugging3=0;
-
 int penPos=-1;
-float penUp = mmZ;
+double penUp = mmZ;
 
 void setup() {
+  power(1);
   delay(1500);
   if(debugging3)Serial.begin(9600);
   while(!getConfig()){
@@ -68,7 +73,7 @@ void setup() {
   }
   if(debugging){
     Serial.begin(9600);
-    Serial.println(F("#MyLittlePlotter V1.1 APLHA 5.Dez 2015#"));
+    Serial.println(F("#MyLittlePlotter V1.5 APLHA 6.Jan 2016#"));
     Serial.println(F("#--by Nick S. Lemberger aka Holysock--#"));
     Serial.println(F("#-------nick-lemberger@live.de--------#"));
   }
@@ -88,10 +93,11 @@ void setup() {
   if(endS_X) pinMode(endX,INPUT_PULLUP);
   if(endS_Y) pinMode(endY,INPUT_PULLUP);
   if(endS_Z) pinMode(endZ,INPUT_PULLUP);
+  //if(debugging)Serial.println(F("Motors are on."));
   power(0);
-  if(debugging)Serial.println(F("Motors are on."));
-  setPen(1);
-  setLaser(laserMin);
+  if(Z_mode)setPen(1);
+  setLaser(0);
+  home();
 }
 
 void loop(){
@@ -111,10 +117,20 @@ void power(boolean on){
 }
 
 void setLaser(int pwm){
-  analogWrite(9,pwm);
+  analogWrite(laser,pwm);
 }
 
-void setPen(float z){
+void setFeedrate(double fr){
+  if(fr <= feedrate_MAX){
+    t = round((1/SLOWST_AXIS) * (1/feedrate) * 1000000);
+    if(debugging2==1){
+      Serial.print("set time to ");
+      Serial.println(t);
+    }
+  } 
+}
+
+void setPen(double z){
   int tmp = t;
   t = 2*t;
   if(z>0&&penPos<0){
@@ -183,9 +199,11 @@ int readFile(){
   char __fileName[sizeof(fileName)];
   fileName.toCharArray(__fileName, sizeof(__fileName));
   
-  file=SD.open("gcode.nc");
+  file=SD.open("test.nc");
   if(!file) return 2;
   byte state = STATE_IDLE;
+  
+  if(debugging4) while (file.available()) Serial.print(char(file.read()));
   
   while (file.available()){  // State machine Z0 = STATE_IDLE
     if(debugging2){
@@ -198,12 +216,12 @@ int readFile(){
       nextByte=file.read();
       if(nextByte==71)      state=STATE_G; // found a G-command
       //else if(nextByte==77) state=STATE_M; // found a M-command
-      //else if(nextByte==70) state=STATE_F; // found a F-command
+      else if(nextByte==70) state=STATE_F; // found a F-command
       else{
         state=STATE_IDLE;
         continue; 
       }    
-      if(debugging2){
+      if(debugging3){
         Serial.print(state);
         Serial.print(F(" "));
         Serial.println(char(nextByte));
@@ -232,11 +250,12 @@ int readFile(){
         Serial.println(char(nextByte));
       }
       
-      float x = RposX;
-      float y = RposY;
-      float z = penPos;
-      float i = 0;
-      float j = 0;  
+      double x = RposX/mmX;
+      double y = RposY/mmY;
+      double z = penPos/mmZ;
+      double i = 0;
+      double j = 0; 
+      double f = feedrate; 
  
       nextByte=file.read(); 
       
@@ -249,6 +268,7 @@ int readFile(){
         else if(nextByte==122||nextByte==90)  z=findNum();
         else if(nextByte==105||nextByte==73)  i=findNum();
         else if(nextByte==106||nextByte==74)  j=findNum();
+        else if(nextByte==70)                 f=findNum();
         while(nextByte==32) nextByte=file.read(); // getting rid of space
         }
         if(debugging){
@@ -258,35 +278,40 @@ int readFile(){
          Serial.println(z);
          Serial.println(i);
          Serial.println(j);
+         Serial.println(f);
          Serial.println(F("----------------------- "));
         }
         if(state==STATE_G0){
           if(debugging)Serial.println(F("G0"));
           
-          setPen(z);
-          line(x,y);
-          setLaser(laserMin);
+          if(Z_mode) setPen(z*mmZ);
+          else setLaser(z);
+          line(x*mmX,y*mmY);
+          //setLaser(0);
         }
         else if(state==STATE_G1){
           if(debugging)Serial.println(F("G1"));
           
-          setPen(z);
-          line(x,y);
-          setLaser(laserMin);
+          if(Z_mode) setPen(z*mmZ);
+          else setLaser(z);
+          line(x*mmX,y*mmY);
+          //setLaser(0);
         }
         else if(state==STATE_G2){
           if(debugging)Serial.println(F("G2"));
           
-          setPen(z);
-          arc(x,y,i,j,0);
-          setLaser(laserMin);
+          if(Z_mode) setPen(z*mmZ);
+          else setLaser(z);
+          arc(x*mmX,y*mmY,i*mmX,j*mmY,0);
+          //setLaser(0);
         }
         else if(state==STATE_G3){
           if(debugging)Serial.println(F("G3")); 
           
-          setPen(z);
-          arc(x,y,i,j,1);
-          setLaser(laserMin);
+          if(Z_mode) setPen(z*mmZ);
+          else setLaser(z);
+          arc(x*mmX,y*mmY,i*mmX,j*mmY,1);
+          //setLaser(0);
         }  
         state=STATE_IDLE;
         continue;
@@ -297,17 +322,24 @@ int readFile(){
       //Serial.println(char(nextByte));
     }
     if(state==STATE_F){ // F-command  
-      //Serial.print(state);
-      //Serial.print(" ");
-      //Serial.println(char(nextByte));
+      if(debugging2){
+        Serial.print(state);
+        Serial.print(" ");
+        Serial.println(char(nextByte));
+      }
+      nextByte=file.read();
+      while(nextByte==32) nextByte=file.read(); // getting rid of space
+      setFeedrate(findNum());
+      state=STATE_IDLE;
+      continue;
     }
   }
   return 0;
 }
 
-float findNum(){
+double findNum(){
   boolean flag=0; // minus flag
-  float tmp=0;
+  double tmp=0;
   
   nextByte=file.read(); 
   
@@ -323,15 +355,15 @@ float findNum(){
   nextByte = file.read();
   if(nextByte>=48 && nextByte<=57){
     while(nextByte!=44 && nextByte!=46 && nextByte!=32){ // numbers before point 
-      float aNum = nextByte - 48;
+      double aNum = nextByte - 48;
       tmp = tmp*10 + aNum;
       //Serial.println(tmp);
       nextByte = file.read();
     }
   }
-  if(nextByte!=44&&nextByte!=46){
+  if(nextByte!=44 && nextByte!=46){
       if(flag) tmp = -tmp;
-      //Serial.println(F("Well, thats strange..."));
+      if(debugging3)Serial.println(F("num without point"));
       return tmp;
    }
    else{
@@ -339,7 +371,7 @@ float findNum(){
      int i=1;
      //Serial.println(F("Now numbers after point"));
      while(nextByte>=48 && nextByte<=57){  // numbers after point
-       float aNum = nextByte-48; 
+       double aNum = nextByte-48; 
        for(int j=0;j<i;j++){
          aNum = aNum*0.1;
        }
@@ -376,7 +408,6 @@ void step (){
   digitalWrite(stepX,LOW);
   digitalWrite(stepY,LOW);
   digitalWrite(stepZ,LOW);
-  delayMicroseconds(t);
 }
 
 boolean limit(int axis, boolean h_e){
@@ -462,14 +493,14 @@ int sig(long var){
   else if(var<0) return -1;
   return 0;
 }
-int line(float movX, float movY){
+int line(double movX, double movY){
 
   long dX = movX-RposX;
   long dY = movY-RposY;
   int incx = sig(dX);
   int incy = sig(dY);
   int pdx,pdy,ddx,ddy;
-  float err,el,es;
+  double err,el,es;
   
   if (dX<0) dX=-dX;
   if (dY<0) dY=-dY;
@@ -514,35 +545,35 @@ int line(float movX, float movY){
   }
   stepArry[0]=0;
   stepArry[1]=0;
-  //if(!Z_mode || Z_mode) setLaser(laserMin); // note: change later 
+  //if(!Z_mode || Z_mode) setLaser(0); // note: change later 
   return 0;
 }
 
-float atan3(float dx,float dy){
-  float a=atan2(dy,dx);
+double atan3(double dx,double dy){
+  double a=atan2(dy,dx);
   if(a<0) a=(PI*2.0)+a;
   return a;
 }
 
-void arc(float cx,float cy,float x,float y,float dir){
-  float dx = RposX-cx;
-  float dy = RposY-cy;
+void arc(double cx,double cy,double x,double y,double dir){
+  double dx = RposX-cx;
+  double dy = RposY-cy;
   
-  float radius=sqrt(dx*dx+dy*dy);
-  float angle1 = atan3(dy,dx);
-  float angle2 = atan3(y-cy,x-cx);
-  float sweep = angle2-angle1;
+  double radius=sqrt(dx*dx+dy*dy);
+  double angle1 = atan3(dy,dx);
+  double angle2 = atan3(y-cy,x-cx);
+  double sweep = angle2-angle1;
   
   if(dir==1 && sweep<0) angle2+=2*PI;
   else if(dir==0 && sweep>0) angle1+=2*PI;
   sweep=angle2-angle1;
-  float len = abs(sweep) * radius;
+  double len = abs(sweep) * radius;
   int i;
   int segments = abs(floor( len / CM_PER_SEGMENT ));
-  float newX, newY,angle3, fraction;
+  double newX, newY,angle3, fraction;
   
   for(i=0;i<segments;i++){
-    fraction = ((float)i)/((float)segments);
+    fraction = ((double)i)/((double)segments);
     angle3 = (sweep * fraction)+angle1;
     newX = cx + sin(angle3)*radius;
     newY = cy + cos(angle3)*radius;
@@ -550,92 +581,3 @@ void arc(float cx,float cy,float x,float y,float dir){
     }
   line(x,y);
 }
-
-/*void homeZero(){
-    boolean done=0;
-    boolean aX,aY,aZ,bX,bY,bZ,cX,cY,cZ = 0;
-    long i = 0;
-    long j = 0;
-    long k = 0;
-    while(!done){
-    //  if(hS_X){
-        Serial.println("1");
-        if(!digitalRead(homeX)&&!aX&&!bX){
-          stepArry[0]=1;
-          stepArry[3]=1;
-        }
-        if(digitalRead(homeX)&&!aX&&!bX){
-          stepArry[0]=1;
-          stepArry[3]=0;
-          aX=1;
-        }
-        if(i<(mmX*5)&&aX&&!bX){
-          i++;
-        }
-        if(i>=(mmX*5)&&aX&&!bX){
-          stepArry[0]=1;
-          stepArry[3]=1;
-          bX=1;
-        }
-        if(bX==1&&digitalRead(homeX)){
-          cX=1;
-        }
-     // } else cX=1;
-     // if(hS_Y){
-        Serial.println("2");
-        if(!digitalRead(homeY)&&!aY&&!bY){
-          stepArry[1]=1;
-          stepArry[4]=1;
-        }
-        if(digitalRead(homeY)&&!aY&&!bY){
-          stepArry[1]=1;
-          stepArry[4]=0;
-          aY=1;
-        }
-        if(j<850&&aY&&!bY){
-          j++;
-        }
-        if(j>=850&&aY&&!bY){
-          stepArry[1]=1;
-          stepArry[4]=1;
-          bY=1;
-        }
-        if(bY==1&&digitalRead(homeY)){
-          cY=1;
-        }
-     // } else cY=1;
-     // if(hS_Z){
-        Serial.println("1");
-        if(!digitalRead(homeZ)&&!aZ&&!bZ){
-          stepArry[2]=1;
-          stepArry[5]=1;
-        }
-        if(digitalRead(homeZ)&&!aZ&&!bZ){
-          stepArry[2]=1;
-          stepArry[5]=0;
-          aZ=1;
-        }
-        if(k<(mmZ*5)&&aZ&&!bZ){
-          k++;
-        }
-        if(k>=(mmZ*5)&&aZ&&!bZ){
-          stepArry[2]=1;
-          stepArry[5]=1;
-          bZ=1;
-        }
-        if(bZ==1&&digitalRead(homeZ)){
-          cZ=1;
-        }
-   //   } else cZ=1;
-      Serial.println("3");
-      if(cX&&cY){
-        done=1;
-      }
-      step();
-    }
-    Serial.println("4");
-    RposX=0;
-    RposY=0;
-    RposZ=0;
-}*/
-
